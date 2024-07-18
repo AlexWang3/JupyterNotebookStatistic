@@ -1,0 +1,47 @@
+TODO:
+1. Stitic: 1000 repo, max/min/average/sum #ipynb file
+2. length of code/length of markdown per file
+3. number of assertion
+
+Tmux: 保留进程
+USE LINUX UW server, first on 1 repo
+1. git clone,
+2. search for ipynb files
+3. delete repo
+
+
+收集 Change
+git log, filter change (存成json格式的文件)
+json
+[
+{
+  "repo": ...
+  "commit": ...
+  "file": ...
+  "message": ...
+  "diff": ...
+}, ...
+]
+
+Jun 28
+1. concatinage all code block
+2. python difflib manual diff
+3. collect file line count for ipynb
+
+July 13
+Q: difflib identicle line printed out
+1. create Github repo
+2. run on many project (100)
+3. line count on latest commit, new stat separate from commit in ipynb_count (stat.json)
+[
+{
+  "repo": ...
+  "file_name": ...
+  "line_count": ...
+}, ...
+]
+4. summary on commits.json, sum of commits number for all repo, number of changed files, number of edit lines and remove lines
+average, min, max. Create a distribution plot.
+5. summary on stat.json, sum of file number, lines of code
+average, min, max. Create a distribution plot.
+
