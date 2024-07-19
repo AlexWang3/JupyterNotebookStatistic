@@ -9,11 +9,13 @@ from retry import retry
 from git import rmtree
 from pathlib import Path
 from statistics import mean
+from tqdm import tqdm
 
 
 
 git_log_command = ['git', 'log', '--name-only', '--pretty=format:%H%n%s']
 git_diff_command = 'git diff {}^1 -- {}'
+repo_number = 100
 
 # Function to clone a repository
 def clone_repository(repo_url, clone_dir):
@@ -59,18 +61,19 @@ def output_string_difference(string1, string2):
 
 @retry(tries=15, delay=2)
 def retry_rmtree(directory):
-    rmtree(directory)
+    file_path = u"\\\\?\\" + os.path.join(os.getcwd(), directory)
+    rmtree(file_path)
 
 
 if not os.path.exists('clones'):
     os.makedirs('clones')
 
 with open('top_1000_python_repos.json', 'r') as f:
-    repos = json.load(f)[:1000]
+    repos = json.load(f)[:repo_number]
 
 ipynb_counts = []
 all_commits = []
-for repo in repos:
+for repo in tqdm(repos):
     owner = repo['owner']['login']
     repo_name = repo['name']
     repo_url = repo['clone_url']
@@ -107,7 +110,7 @@ for repo in repos:
                 if not file_name.endswith('.ipynb'):
                     continue
                 file_path = os.path.join(clone_dir, file_name)
-                print(file_path)
+                #print(file_path)
                 cur_commit = current_commit["commit"]
                 pre_commit = cur_commit + '^'
                 #cur_code = concatenate_code_cells(file_path)
@@ -119,8 +122,7 @@ for repo in repos:
                 pre_code = concatenate_code_cells(pre_content)
                 
                 diff_output = output_string_difference(pre_code, cur_code)
-                line_count = cur_code.count('\n') + 1
-                current_commit['files'].append({'file': file_name, 'diff': diff_output, 'line_count': line_count})
+                current_commit['files'].append({'file': file_name, 'diff': diff_output})
                 
         if current_commit:
             commits.append(current_commit)
@@ -133,11 +135,13 @@ for repo in repos:
                     "commit": commit['commit'],
                     "file": file['file'],
                     "message": " ".join(commit['messages']),
-                    "diff": file['diff'],
-                    "line_count": file['line_count']
+                    "diff": file['diff']
                 })
 
-    break
+        try:
+            retry_rmtree(clone_dir)
+        except Exception as e:
+            print(f"Failed to delete repository {clone_dir} after retries: {e}")
 
 # Output to JSON 
 with open('commits.json', 'w') as f:
