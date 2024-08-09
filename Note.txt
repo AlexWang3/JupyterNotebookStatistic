@@ -45,3 +45,12 @@ average, min, max. Create a distribution plot.
 5. summary on stat.json, sum of file number, lines of code
 average, min, max. Create a distribution plot.
 
+
+July 19
+1. repo name: "user name_repo name" (stat.json)
+2. file name -> file path  (stat.json)
+3. record failed git clone
+4. summary on commits.json, sum of commits number for all repo, number of changed files, number of edit lines and remove lines
+average, min, max. Create a distribution plot.
+5. summary on stat.json, sum of file number, lines of code
+average, min, max. Create a distribution plot.
