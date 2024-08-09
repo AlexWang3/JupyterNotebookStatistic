@@ -34,7 +34,7 @@ def concatenate_code_cells(notebook_content):
 
 
 # Function to count .ipynb files in a repository
-def count_ipynb_files(repo, directory):
+def count_ipynb_files(owner, repo, directory):
     count = 0
     for root, dirs, files in os.walk(directory):
         for file in files:
@@ -53,7 +53,7 @@ def count_ipynb_files(repo, directory):
                     content = file.read()
             content = concatenate_code_cells(content)
             line_count = content.count('\n') + 1
-            ipynb_files.append({'repo': repo, 'file_name': file_name, 'line_count': line_count})
+            ipynb_files.append({'user': owner, 'repo': repo, 'file_name': file_path, 'line_count': line_count})
     return count
 
 # Function to clone a repository
@@ -88,7 +88,7 @@ for repo in tqdm(repos):
     # Clone the repository
     if clone_repository(repo_url, clone_dir):
         # Count .ipynb files
-        count = count_ipynb_files(repo_name, clone_dir)
+        count = count_ipynb_files(owner, repo_name, clone_dir)
         ipynb_counts.append(count)
         # shutil.rmtree(clone_dir, onerror=readonly_to_writable)
         try:
