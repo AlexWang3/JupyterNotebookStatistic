@@ -4,14 +4,33 @@ import json
 import stat, os, shutil
 import subprocess
 import nbformat
+
 import difflib
+import dataclasses
+import seutil as su
+
+from typing import List, Tuple
 from retry import retry
 from git import rmtree
 from pathlib import Path
 from statistics import mean
 from tqdm import tqdm
+ 
+@dataclasses.dataclass
+class RawData:
+    repo: str
+    commit: str
+    file: str
+    message: str
+    old: List[str]
+    new: List[str]
+    diff: List[Tuple[str, int, int, int, int]]
 
+    def concat_old_cells(self) -> str:
+        return "\n".join(self.old)
 
+    def concat_new_cells(self) -> str:
+        return "\n".join(self.new)
 
 git_log_command = ['git', 'log', '--name-only', '--pretty=format:%H%n%s']
 git_diff_command = 'git diff {}^1 -- {}'
@@ -30,6 +49,27 @@ def readonly_to_writable(foo, file, err):
         os.chmod(file, stat.S_IWRITE)
         foo(file)
 
+def extract_code_cells(notebook_content):
+    try:
+        notebook = nbformat.reads(notebook_content, as_version=4)
+    except nbformat.reader.NotJSONError:
+        return ""
+    code_cells = []
+
+    # Iterate through each cell in the notebook
+    for cell in notebook['cells']:
+        if cell['cell_type'] == 'code':
+            code = ''.join(cell.get('source', ''))  # Join the list of lines into a single string
+            # Append the id and code to the list
+            code_cells.append(code)
+
+    return code_cells
+
+def output_code_diff(string1, string2):
+    result = difflib.SequenceMatcher(None, string1, string2).get_opcodes()
+    result = [t for t in result if result[0] != "equal"]
+    return result
+
 def concatenate_code_cells(notebook_content):
     try:
         notebook = nbformat.reads(notebook_content, as_version=4)
@@ -44,21 +84,9 @@ def concatenate_code_cells(notebook_content):
             code_cells.append(cell.source)
     
     # Concatenate all code cells into a single string
-    concatenated_code = "\n".join(code_cells)
+    concatenated_code = "<NEWCELL>\n".join(code_cells)
     return concatenated_code
-
-def output_string_difference(string1, string2):
-    # Use difflib to find differences
-    diff = difflib.unified_diff(string1.splitlines(), string2.splitlines())
-    # Convert the generator to a list
-    diff_list = list(diff)
     
-    # Join the list into a single string with newline characters
-    diff_output = '\n'.join(diff_list)
-    
-    return diff_output
-
-
 @retry(tries=15, delay=2)
 def retry_rmtree(directory):
     file_path = u"\\\\?\\" + os.path.join(os.getcwd(), directory)
@@ -68,7 +96,7 @@ def retry_rmtree(directory):
 if not os.path.exists('clones'):
     os.makedirs('clones')
 
-with open('top_1000_python_repos.json', 'r') as f:
+with open('data_fetching/results/top_1000_python_repos.json', 'r') as f:
     repos = json.load(f)[:repo_number]
 
 ipynb_counts = []
@@ -118,11 +146,17 @@ for repo in tqdm(repos):
                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout
                 pre_content = subprocess.run(['git', 'show', f'{pre_commit}:{file_name}'], cwd=clone_dir,
                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout
-                cur_code = concatenate_code_cells(cur_content)
-                pre_code = concatenate_code_cells(pre_content)
                 
-                diff_output = output_string_difference(pre_code, cur_code)
-                current_commit['files'].append({'file': file_name, 'diff': diff_output})
+                cur_code = extract_code_cells(cur_content)
+                pre_code = extract_code_cells(pre_content)
+                diff_output = output_code_diff(pre_code, cur_code)
+
+                current_commit['files'].append({
+                    'file': file_name, 
+                    'old' : pre_code,
+                    'new' : cur_code,
+                    'diff': diff_output
+                })
                 
         if current_commit:
             commits.append(current_commit)
@@ -130,19 +164,24 @@ for repo in tqdm(repos):
         # Append repo details to the main list
         for commit in commits:
             for file in commit['files']:
-                all_commits.append({
-                    "repo": repo_name,
-                    "commit": commit['commit'],
-                    "file": file['file'],
-                    "message": " ".join(commit['messages']),
-                    "diff": file['diff']
-                })
+                rawdata = RawData(
+                    repo=repo_name, 
+                    commit=commit['commit'], 
+                    file=file['file'], 
+                    message= "".join(commit['messages']), 
+                    old=file['old'], 
+                    new=file['new'],
+                    diff=file['diff']
+                )
+                all_commits.append(rawdata)
 
         try:
             retry_rmtree(clone_dir)
         except Exception as e:
             print(f"Failed to delete repository {clone_dir} after retries: {e}")
+    break
 
 # Output to JSON 
-with open('commits.json', 'w') as f:
-    json.dump(all_commits, f, indent=2)
+# with open('commits2.json', 'w') as f:
+#     json.dump(all_commits, f, indent=2)
+su.io.dump(Path.cwd() / "data_fetching/results/commits.jsonl", all_commits)

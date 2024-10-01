@@ -54,3 +54,15 @@ July 19
 average, min, max. Create a distribution plot.
 5. summary on stat.json, sum of file number, lines of code
 average, min, max. Create a distribution plot.
+
+
+Sep 17
+1.保留old 和 new 的原始代码
+2.jsonl
+3.保留code cell信息， 原始代码
+  a. list of dic of ["id"， "content"] 保留cell id 和 代码
+  b. nbformat, 每个cell 一个特殊符号
+
+Sep 24
+1. 根据template整理代码 https://github.com/pengyunie/python-template
+2. 更改文件存放格式

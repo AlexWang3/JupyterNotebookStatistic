@@ -89,6 +89,8 @@ for item in tqdm(commits):
     edit, add = get_line_change_num(item['diff'])
     edit_line_num.append(edit)
     add_delete_line_num.append(add)
+    if (commits_num[-1] > 1000):
+        print(cur_repo_name)
 
 plot_and_save_distribution(commits_num, 'commits_summary/commits_num.png', title='Number of commits for each repo', 
                            xlabel='Number of commits', ylabel='Frequence',
