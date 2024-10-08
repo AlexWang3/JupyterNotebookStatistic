@@ -1,8 +1,13 @@
 import requests
 import json
+import os
 
 # Your GitHub personal access token
-TOKEN = ''
+TOKEN = os.getenv("GITHUB_TOKEN")
+if (TOKEN):
+    print("TOKEN OK")
+else:
+    print("Filed to get TOKEN")
 
 # Headers for the request
 headers = {
