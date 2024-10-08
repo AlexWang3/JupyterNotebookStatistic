@@ -2,7 +2,7 @@ import requests
 import json
 
 # Your GitHub personal access token
-TOKEN = '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'
+TOKEN = ''
 
 # Headers for the request
 headers = {
