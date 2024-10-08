@@ -31,9 +31,9 @@ def main():
     ]
     list2 = [
         "This is the first line.",
-        "This is the second line modified.",
+        "This is the second line.",
         "Here is another line.",
-        "This is the last line.",
+        "This is the final line.",
     ]
 
     diff_seq = difflib.SequenceMatcher(None, list1, list2).get_opcodes()

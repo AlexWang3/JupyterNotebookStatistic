@@ -2,7 +2,7 @@ import requests
 import json
 
 # Your GitHub personal access token
-TOKEN = ''
+TOKEN = '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'
 
 # Headers for the request
 headers = {
@@ -49,7 +49,7 @@ for page in range(1, 11):  # 10 pages, 100 results per page
 
 
 # Save the results to a file (optional)
-with open('top_1000_python_repos.json', 'w') as file:
+with open('data_fetching/results/top_1000_python_repos.json', 'w') as file:
     json.dump(repositories, file, indent=4)
 
 print(f"Fetched {len(repositories)} repositories.")

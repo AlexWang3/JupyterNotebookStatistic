@@ -24,7 +24,8 @@ class RawData:
     message: str
     old: List[str]
     new: List[str]
-    diff: List[Tuple[str, int, int, int, int]]
+    cell_diff: List[Tuple[str, int, int, int, int]]
+    line_diff: List[List[Tuple[str, int, int, int, int]]]
 
     def concat_old_cells(self) -> str:
         return "\n".join(self.old)
@@ -34,7 +35,7 @@ class RawData:
 
 git_log_command = ['git', 'log', '--name-only', '--pretty=format:%H%n%s']
 git_diff_command = 'git diff {}^1 -- {}'
-repo_number = 100
+repo_number = 1000
 
 # Function to clone a repository
 def clone_repository(repo_url, clone_dir):
@@ -52,7 +53,7 @@ def readonly_to_writable(foo, file, err):
 def extract_code_cells(notebook_content):
     try:
         notebook = nbformat.reads(notebook_content, as_version=4)
-    except nbformat.reader.NotJSONError:
+    except:
         return ""
     code_cells = []
 
@@ -67,8 +68,18 @@ def extract_code_cells(notebook_content):
 
 def output_code_diff(string1, string2):
     result = difflib.SequenceMatcher(None, string1, string2).get_opcodes()
-    result = [t for t in result if result[0] != "equal"]
+    result = [t for t in result if t[0] != "equal"]
     return result
+
+def output_line_diff(string1, string2, celldiff):
+    result = []
+    replace = [t for t in celldiff if t[0] == 'replace']
+    for t in replace:
+        sub1 = '\n'.join(string1[t[1]:t[2]]).split('\n')
+        sub2 = '\n'.join(string2[t[3]:t[4]]).split('\n')
+        result.append(output_code_diff(sub1, sub2))
+    return result
+
 
 def concatenate_code_cells(notebook_content):
     try:
@@ -147,15 +158,19 @@ for repo in tqdm(repos):
                 pre_content = subprocess.run(['git', 'show', f'{pre_commit}:{file_name}'], cwd=clone_dir,
                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout
                 
+
                 cur_code = extract_code_cells(cur_content)
                 pre_code = extract_code_cells(pre_content)
                 diff_output = output_code_diff(pre_code, cur_code)
+
+                line_diff_output = output_line_diff(pre_code, cur_code, diff_output)
 
                 current_commit['files'].append({
                     'file': file_name, 
                     'old' : pre_code,
                     'new' : cur_code,
-                    'diff': diff_output
+                    'cell_diff': diff_output,
+                    'line_diff': line_diff_output
                 })
                 
         if current_commit:
@@ -171,7 +186,8 @@ for repo in tqdm(repos):
                     message= "".join(commit['messages']), 
                     old=file['old'], 
                     new=file['new'],
-                    diff=file['diff']
+                    cell_diff=file['cell_diff'],
+                    line_diff=file['line_diff']
                 )
                 all_commits.append(rawdata)
 
@@ -179,7 +195,11 @@ for repo in tqdm(repos):
             retry_rmtree(clone_dir)
         except Exception as e:
             print(f"Failed to delete repository {clone_dir} after retries: {e}")
-    break
+    else:
+        try:
+            retry_rmtree(clone_dir)
+        except Exception as e:
+            print(f"Failed to delete repository {clone_dir} after retries: {e}")
 
 # Output to JSON 
 # with open('commits2.json', 'w') as f:
